@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
-from utils.pdf_reader import extract_text_from_pdf
 from fastapi import UploadFile, File
+from bson.objectid import ObjectId
+from model.summarizer import generate_summary, model 
+from typing import Optional
+from datetime import datetime, timezone
 
+from db.mongo_config import get_db
+from utils.pdf_reader import extract_text_from_pdf
 app = FastAPI()
 
 # CORS configuration
@@ -16,7 +19,6 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
 )   
-
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -35,16 +37,29 @@ async def read_root():
 @app.post("/analyze/")
 async def analyze_article(file: UploadFile = File(...)):
     content = extract_text_from_pdf(file.file)
-    # summary = summarize(content)
+    if not content:
+        return {"error": "No text found in the PDF file."}
+    db = get_db()
+    article = {
+        "content": content,
+        "filename": file.filename,
+        "uploaded_at": datetime.now(timezone.utc)
+    }
+    result = db.articles.insert_one(article)
+    return {"content": content, "article_id": str(result.inserted_id)}
 
-    # prediction = classifier.predict([content])[0]
+@app.get("/summarize/")
+async def summarize_article(article_id: Optional[str] = None):
+    db = get_db()
+    if article_id:
+        article = db.articles.find_one({"_id": ObjectId(article_id)})
+    else:
+        article = db.articles.find_one(sort=[("uploaded_at", -1)])
+    if not article:
+        return {"error": "No article found."}
+    content = article["content"]
+    summary = generate_summary(content, model, diversity_lambda=0.7)
+    return {"summary": summary} 
 
-    # record = {
-    #     "filename": file.filename,
-    #     "summary": summary,
-    #     "category": prediction
-    # }
-    # collection.insert_one(record)
 
-    return {"content": content}  # Return the extracted text for now
 
