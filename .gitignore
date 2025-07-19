@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+frontend/**/__pycache__/
+frontend/**/node_modules/

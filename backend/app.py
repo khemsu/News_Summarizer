@@ -59,7 +59,43 @@ async def summarize_article(article_id: Optional[str] = None):
         return {"error": "No article found."}
     content = article["content"]
     summary = generate_summary(content, model, diversity_lambda=0.7)
-    return {"summary": summary} 
+    return {"summary": summary}
+
+@app.get("/classify/")
+async def classify_article(article_id: Optional[str] = None):
+    db = get_db()
+    if article_id:
+        article = db.articles.find_one({"_id": ObjectId(article_id)})
+    else:
+        article = db.articles.find_one(sort=[("uploaded_at", -1)])
+    if not article:
+        return {"error": "No article found."}
+    content = article["content"]
+    
+    # Simple classification logic - you can enhance this with your ML model
+    # For now, let's do a basic keyword-based classification
+    content_lower = content.lower()
+    
+    if any(word in content_lower for word in ['politics', 'government', 'election', 'policy']):
+        classification = "Politics"
+        confidence = 85
+    elif any(word in content_lower for word in ['technology', 'tech', 'ai', 'software', 'computer']):
+        classification = "Technology"
+        confidence = 90
+    elif any(word in content_lower for word in ['business', 'economy', 'finance', 'market', 'company']):
+        classification = "Business"
+        confidence = 80
+    elif any(word in content_lower for word in ['health', 'medical', 'medicine', 'doctor', 'hospital']):
+        classification = "Health"
+        confidence = 88
+    elif any(word in content_lower for word in ['sports', 'football', 'basketball', 'soccer', 'game']):
+        classification = "Sports"
+        confidence = 92
+    else:
+        classification = "General"
+        confidence = 70
+    
+    return {"classification": classification, "confidence": confidence} 
 
 
 
