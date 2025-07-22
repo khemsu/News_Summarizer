@@ -39,7 +39,7 @@ vectorizer = joblib.load('model/vectorizer.joblib')
 def classify_article(article_text):
     processed = ' '.join([w for w in word_tokenize(article_text.lower()) if w.isalnum() and w not in stopwords.words('english')])
     try:
-        fitted_vectorizer = joblib.load('saved_models/vectorizer.joblib')
+        fitted_vectorizer = joblib.load('model/vectorizer.joblib')
         X = fitted_vectorizer.transform([processed])
     except:
         vectorizer = TfidfVectorizer(max_features=2000)
