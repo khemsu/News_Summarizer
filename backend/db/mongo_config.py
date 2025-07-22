@@ -12,6 +12,8 @@ def get_db():
     # db = client[os.getenv("MONGODB_DB_NAME")]
     return db
 
+
+
 #bips
 # def get_db():
 #     client = MongoClient(os.getenv("MONGODB_URI"))
