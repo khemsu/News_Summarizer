@@ -34,32 +34,32 @@ const Navbar = () => {
                 Home
               </Link>
               <Link 
-                to="/upload" 
+                to="/summarize" 
                 className="px-4 py-2 rounded-full text-black font-medium transition-all duration-200 hover:bg-white hover:shadow-sm transform hover:scale-105"
                 style={{color: '#000000'}}
               >
                 Upload
               </Link>
               <Link 
-                to="/summarize" 
+                to="/text-summarize" 
                 className="px-4 py-2 rounded-full text-black font-medium transition-all duration-200 hover:bg-white hover:shadow-sm transform hover:scale-105"
                 style={{color: '#000000'}}
               >
                 Summarize
               </Link>
-              <a 
-                href="#contact" 
+              <Link 
+                to="/contact" 
                 className="px-4 py-2 rounded-full text-black font-medium transition-all duration-200 hover:bg-white hover:shadow-sm transform hover:scale-105"
                 style={{color: '#000000'}}
               >
                 Contact
-              </a>
+              </Link>
             </div>
             
             {/* CTA Button with Glass Effect */}
             <div className="ml-6">
               <button className="relative overflow-hidden bg-white/20 backdrop-blur-md border border-white/30 text-black px-6 py-2.5 rounded-full font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 hover:bg-white/30">
-                <span className="relative z-10">Get Started</span>
+                <Link to="/summarize" className="relative z-10">Get Started</Link>
               </button>
             </div>
           </div>
@@ -105,7 +105,7 @@ const Navbar = () => {
                 <span>Upload</span>
               </Link>
               <Link 
-                to="/summarize" 
+                to="/summarize/text-summarize" 
                 className="flex items-center space-x-3 text-black hover:text-gray-700 hover:bg-gray-50 px-4 py-3 rounded-xl font-medium transition-all duration-200"
                 style={{color: '#000000'}}
                 onClick={() => setIsMenuOpen(false)}

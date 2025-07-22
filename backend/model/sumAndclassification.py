@@ -41,7 +41,7 @@ def classify_article(article_text):
     try:
         fitted_vectorizer = joblib.load('model/vectorizer.joblib')
         X = fitted_vectorizer.transform([processed])
-    except:
+    except Exception:
         vectorizer = TfidfVectorizer(max_features=2000)
         dummy_corpus = [processed]
         X = vectorizer.fit_transform(dummy_corpus)
