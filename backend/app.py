@@ -1,10 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi import UploadFile, File
 from bson.objectid import ObjectId
 from model.sumAndclassification import generate_summary, classify_article, model
-from typing import Optional
+from typing import Optional, Annotated
 from datetime import datetime, timezone
 
 from db.mongo_config import get_db
@@ -70,6 +70,13 @@ async def summarize_article(article_id: Optional[str] = None):
         db.articles.update_one({"_id": article["_id"]}, {"$set": {"category": category}})
     return {"summary": summary, "category": category}
 
+@app.post("/text-summarize")
+async def summarize_from_text(article_text: Annotated[str, Form()]):
+    if not article_text:
+        return {"error": "No article text provided."}
+    summary = generate_summary(article_text, model, diversity_lambda=0.7)
+    category = classify_article(article_text)
+    return {"summary": summary, "category": category}
 
 
 

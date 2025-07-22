@@ -13,10 +13,10 @@ const Summarize = () => {
     }
 
     async function handleSummarize() {
-        if (!documentId) {
-            alert("Please enter a document ID to summarize.");
-            return;
-        }
+        // if (!documentId) {
+        //     alert("Please enter a document ID to summarize.");
+        //     return;
+        // }
         setLoading(true);
         try{
             await axios.get(`http://localhost:8000/summarize/?article_id=${documentId}`)
@@ -107,7 +107,7 @@ const Summarize = () => {
                             <h3 className="text-2xl font-bold text-black">Summary</h3>
                         </div>
                         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 mb-4">
-                            <p className="text-black leading-relaxed text-lg">{summary}</p>
+                            <p className="text-black leading-relaxed text-lg text-justify">{summary}</p>
                         </div>
                         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                             <h4 className="text-lg font-semibold text-black mb-2">Classification</h4>
