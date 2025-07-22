@@ -6,7 +6,7 @@ from bson.objectid import ObjectId
 from model.sumAndclassification import generate_summary, classify_article, model
 from typing import Optional, Annotated
 from datetime import datetime, timezone
-
+from db.schema import Article
 from db.mongo_config import get_db
 from model.sumAndclassification import generate_summary, classify_article, model
 from db.mongo_config import get_db
@@ -38,19 +38,20 @@ async def read_root():
     """
 
 @app.post("/analyze/")
-async def analyze_article(file: UploadFile = File(...)):
+async def analyze_article( file: UploadFile = File(...)):
     content = extract_text_from_pdf(file.file)
     if not content:
         return {"error": "No text found in the PDF file."}
     db = get_db()
     category = classify_article(content)
-    article = {
-        "content": content,
-        "filename": file.filename,
-        "uploaded_at": datetime.now(timezone.utc),
-        "category": category
-    }
-    result = db.articles.insert_one(article)
+    article_data = Article(
+        filename=file.filename,
+        content=content,
+        category=category,
+        summary = "",
+        uploaded_at=datetime.now(timezone.utc)
+    )
+    result = db.articles.insert_one(article_data.dict())
     return {"content": content, "article_id": str(result.inserted_id), "category": category}
 
 @app.get("/summarize/")
