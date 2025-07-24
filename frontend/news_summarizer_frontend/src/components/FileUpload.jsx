@@ -42,7 +42,7 @@ const FileUpload = () => {
     }
 
     async function handleCopyFileId() {
-        if (fileDetails?.article_id) {
+        if (fileDetails?.article_id) { //If fileDetails exists and it has an article_id property (that is not null, undefined, 0, or an empty string), then do the following..."
             setCopying(true);
             try {
                 await navigator.clipboard.writeText(fileDetails.article_id);
