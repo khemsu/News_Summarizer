@@ -42,29 +42,29 @@ async def analyze_article( file: UploadFile = File(...)):
     if not content:
         return {"error": "No text found in the PDF file."}
     db = get_db()
-    category = classify_article(content)
+    # category = classify_article(content)
     article_data = Article(
         filename=file.filename,
         content=content,
-        category=category,
+        category="",
         summary = "",
         uploaded_at=datetime.now(timezone.utc)
     )
     result = db.articles.insert_one(article_data.dict())
-    return {"content": content, "article_id": str(result.inserted_id), "category": category}
+    return {"content": content, "article_id": str(result.inserted_id)}
 
 @app.get("/summarize/")
 async def summarize_article(article_id: Optional[str] = None):
     db = get_db()
     if article_id:
         article = db.articles.find_one({"_id": ObjectId(article_id)})
+        category = article.get("category", "")
     else:
         article = db.articles.find_one(sort=[("uploaded_at", -1)])
     if not article:
         return {"error": "No article found."}
     content = article["content"]
     summary = generate_summary(content, model, diversity_lambda=0.7)
-    category = article.get("category")
     if not category:
         category = classify_article(content)
         db.articles.update_one({"_id": article["_id"]}, {"$set": {"category": category}})

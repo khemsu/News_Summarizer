@@ -30,11 +30,7 @@ const Home = () => {
             <div className="absolute top-1/2 right-1/4 w-20 h-20 bg-gray-100 rounded-full blur-sm"></div>
         </div>
 
-        {/* Components sections can be added here */}
-        <div className="hidden">
-            <FileUpload/>
-            <Summarize />
-        </div>
+
     </div>
   )
 }
