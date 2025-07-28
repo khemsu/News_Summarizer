@@ -7,7 +7,7 @@ from typing import Optional, Annotated, Dict
 from datetime import datetime, timezone
 from db.schema import Article
 from db.mongo_config import get_db
-from model.sumAndclassification import generate_summary, classify_article, model, extract_text_from_url, summarize_and_classify_url
+from model.sumAndclassification import generate_summary, classify_article, model, extract_text_from_url
 from utils.pdf_reader import extract_text_from_pdf
 from pydantic import BaseModel
 
