@@ -13,28 +13,30 @@ const Summarize = () => {
     }
 
     async function handleSummarize() {
-        // if (!documentId) {
-        //     alert("Please enter a document ID to summarize.");
-        //     return;
-        // }
+        if (!documentId.trim()) {
+            alert("Please enter a document ID to summarize.");
+            return;
+        }
+        
         setLoading(true);
-        try{
-            await axios.get(`http://localhost:8000/summarize/?article_id=${documentId}`)
-            .then((response) => {
-                setSummary(response.data.summary);
-                setClassification(response.data.category);
-                console.log(response.data);
-            })
-        }catch{
-            console.error("Error fetching summary:");
+        try {
+            const response = await axios.get(`http://localhost:8000/summarize/?article_id=${documentId}`);
+            setSummary(response.data.summary);
+            setClassification(response.data.category);
+            console.log(response.data);
+        } catch (error) {
+            console.error("Error fetching summary:", error);
+            console.error("Error details:", error.response?.data);
+            alert("Failed to fetch summary. Please try again.");
         } finally {
             setLoading(false);
         }
     }
 
     function handleClearSummary() {
-        setSummary("");
         setDocumentId("");
+        setSummary("");
+        setClassification("");
     }
 
     return (
@@ -47,7 +49,7 @@ const Summarize = () => {
                         Document Summarizer
                     </h1>
                     <p className="text-lg md:text-xl text-gray-700 max-w-2xl mx-auto leading-relaxed">
-                        Enter your document ID to get summary of your uploaded content.
+                        Enter a document ID to get summary and classification of previously uploaded articles.
                     </p>
                 </div>
 
@@ -55,15 +57,15 @@ const Summarize = () => {
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-8 mb-8">
                     <div className="space-y-6">
                         <div>
-                            <label htmlFor="documentId" className="block text-black font-semibold text-lg mb-3">
+                            <label htmlFor="documentIdInput" className="block text-black font-semibold text-lg mb-3">
                                 Document ID
                             </label>
-                            <input 
-                                id="documentId"
-                                type="text" 
-                                placeholder="Enter uploaded document ID" 
+                            <input
+                                id="documentIdInput"
+                                type="text"
                                 value={documentId}
-                                onChange={handleInputChange} 
+                                onChange={handleInputChange}
+                                placeholder="Enter document ID (e.g., 507f1f77bcf86cd799439011)"
                                 className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                             />
                         </div>
