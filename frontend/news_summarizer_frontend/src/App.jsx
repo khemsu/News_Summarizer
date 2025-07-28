@@ -5,6 +5,7 @@ import Navbar from './pages/Navbar';
 import Feature from './pages/Feature';
 import Contact from './components/Contact';
 import TextSummarize from './components/TextSummarize';
+import UrlSum from './components/UrlSum'
 
 function App() {
   return (
@@ -14,7 +15,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="summarize" element={<Feature/>}/>
         <Route path="text-summarize" element={<TextSummarize />} />
-        <Route path="/contact" element={<Contact/>} />
+        <Route path="/url-summarize" element={<UrlSum/>} />
       </Routes>
     </Router>
   );

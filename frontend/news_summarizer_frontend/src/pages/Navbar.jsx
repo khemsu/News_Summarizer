@@ -45,14 +45,14 @@ const Navbar = () => {
                 className="px-4 py-2 rounded-full text-black font-medium transition-all duration-200 hover:bg-white hover:shadow-sm transform hover:scale-105"
                 style={{color: '#000000'}}
               >
-                Summarize
+                Summarize from text
               </Link>
               <Link 
-                to="/contact" 
+                to="/url-summarize" 
                 className="px-4 py-2 rounded-full text-black font-medium transition-all duration-200 hover:bg-white hover:shadow-sm transform hover:scale-105"
                 style={{color: '#000000'}}
               >
-                Contact
+              Paste url
               </Link>
             </div>
             
