@@ -6,4 +6,10 @@ class Article(BaseModel):
     content: str
     category: str
     summary: str
-    uploaded_at: datetime.datetime 
+    uploaded_at: datetime.datetime
+
+class User(BaseModel):
+    email: str
+    username: str
+    hashed_password: str
+    created_at: datetime.datetime 
