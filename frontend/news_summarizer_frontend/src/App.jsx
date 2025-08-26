@@ -1,24 +1,63 @@
-import React from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './components/Login';
+import Signup from './components/Signup';
 import Navbar from './pages/Navbar';
-import Feature from './pages/Feature';
-import Contact from './components/Contact';
+import Home from './pages/Home';
+import UrlSum from './components/UrlSum';
+import Summarize from './components/Summarize';
 import TextSummarize from './components/TextSummarize';
-import UrlSum from './components/UrlSum'
+import FileUpload from './components/FileUpload';
 
 function App() {
   return (
-    <Router>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="summarize" element={<Feature/>}/>
-        <Route path="text-summarize" element={<TextSummarize />} />
-        <Route path="/url-summarize" element={<UrlSum/>} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <div className="App">
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            
+            {/* Protected routes */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Navbar />
+                <Home />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/url-summarizer" element={
+              <ProtectedRoute>
+                <Navbar />
+                <UrlSum />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/summarize" element={
+              <ProtectedRoute>
+                <Navbar />
+                <FileUpload />
+                <Summarize />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/text-summarize" element={
+              <ProtectedRoute>
+                <Navbar />
+                <TextSummarize />
+              </ProtectedRoute>
+            } />
+            
+            {/* Redirect any unknown routes to home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 
-export default App
+export default App;
