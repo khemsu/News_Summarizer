@@ -13,6 +13,8 @@ from pydantic import BaseModel
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 import os
 from dotenv import load_dotenv
+from datetime import datetime
+from bson import ObjectId
 
 load_dotenv()
 
@@ -157,25 +159,39 @@ async def logout():
     return {"message": "Successfully logged out"}
 
 @app.get("/me")
-async def get_current_user_info(current_user: str = Depends(get_current_user)):
+async def get_me(current_user: str = Depends(get_current_user)):
     """Get current user information."""
     try:
         users_collection = get_user_collection()
         print(f"Looking for user: {current_user}")
-        user = users_collection.find_one({"username": current_user}, {"hashed_password": 0})
-        print(f"Found user: {user}")
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        return user
+        user_doc = users_collection.find_one({"username": current_user})
+        if not user_doc:
+            raise HTTPException(status_code=404, detail="User not found")
+        return serialize_doc(user_doc)
     except Exception as e:
         print(f"Error in /me endpoint: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving user info: {str(e)}"
         )
+
+def serialize_doc(doc: dict) -> dict:
+    """Convert MongoDB document to JSON-serializable dict."""
+    if not doc:
+        return None
+    out = {}
+    for k, v in doc.items():
+        if isinstance(v, ObjectId):
+            out["id"] = str(v)
+        elif isinstance(v, datetime):
+            out[k] = v.isoformat()
+        else:
+            out[k] = v
+    # keep consistent field name for id if _id present
+    if "_id" in doc and "id" not in out:
+        out["id"] = str(doc["_id"])
+    out.pop("_id", None)
+    return out
 
 # Protected endpoints (require authentication)
 @app.post("/analyze/")
