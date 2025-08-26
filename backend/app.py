@@ -246,7 +246,7 @@ class ArticleIDRequest(BaseModel):
     article_id: str
 
 @app.post("/extract-url-content")
-async def extract_url_content(payload: URLRequest, accept: str = Header(None), current_user: str = Depends(get_current_user)):
+async def extract_url_content(payload: URLRequest, current_user: str = Depends(get_current_user)):
     """Extract content from URL (protected endpoint)."""
     url = payload.url
     if not url:
@@ -267,9 +267,6 @@ async def extract_url_content(payload: URLRequest, accept: str = Header(None), c
         insert_result = articles_collection.insert_one(article_data.dict())
         
         # Return plain text if Accept header requests it
-        if accept and "text/plain" in accept:
-            return Response(content=content, media_type="text/plain")
-        
         # Otherwise return JSON
         return {
             "article_id": str(insert_result.inserted_id),
