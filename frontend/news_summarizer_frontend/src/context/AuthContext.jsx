@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
         password
       });
       
-      const { access_token, token_type } = response.data;
+      const { access_token } = response.data;
       
       // Store token
       localStorage.setItem('token', access_token);
@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }) => {
         password
       });
       
-      const { access_token, token_type } = response.data;
+      const { access_token } = response.data;
       
       // Store token
       localStorage.setItem('token', access_token);
