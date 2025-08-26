@@ -73,7 +73,7 @@ const UrlSum = () => {
                 disabled={loading || !url.trim()}
                 className="flex-1 bg-blue-500/20 backdrop-blur-md border border-blue-300/30 text-blue-800 hover:bg-blue-600/30 hover:text-blue-900 px-6 py-3 rounded-xl font-bold text-lg transition-all duration-200 transform hover:scale-105 hover:-translate-y-1 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:translate-y-0"
               >
-                {loading ? "Extracting..." : "Extract & Analyze"}
+                {loading ? "Extracting..." : "Summarize"}
               </button>
 
               <button 
