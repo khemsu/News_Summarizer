@@ -7,14 +7,14 @@ from typing import Optional, Annotated
 from datetime import datetime, timezone
 from db.schema import Article, User
 from db.mongo_config import get_user_collection, get_article_collection
-from model.sumAndclassification import generate_summary, classify_article, model, extract_text_from_url
-from utils.pdf_reader import extract_text_from_pdf
+from model.sumAndclassification import model, Summarizer
 from pydantic import BaseModel
-from auth import get_password_hash, verify_password, create_access_token, get_current_user
+# from auth import get_password_hash, verify_password, create_access_token, get_current_user
 import os
 from dotenv import load_dotenv
 from datetime import datetime
 from bson import ObjectId
+from auth import Authentication
 
 load_dotenv()
 
@@ -37,10 +37,6 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
 
 class TokenData(BaseModel):
     username: Optional[str] = None
@@ -78,7 +74,7 @@ def display_user_details(username: str):
     except Exception as e:
         print(f"❌ Error displaying user details: {str(e)}")
 
-@app.post("/register", response_model=Token)
+@app.post("/register", response_model=Authentication)
 async def register(user: UserRegister):
     """Register a new user."""
     try:
@@ -95,7 +91,7 @@ async def register(user: UserRegister):
             )
         
         # Hash the password
-        hashed_password = get_password_hash(user.password)
+        hashed_password = Authentication.get_password_hash(user.password)
         print(f"Password hashed successfully for user: {user.username}")
         
         # Create user document
@@ -116,7 +112,7 @@ async def register(user: UserRegister):
         display_user_details(user.username)
         
         # Create access token
-        access_token = create_access_token(data={"sub": user.username})
+        access_token = Authentication.create_access_token(data={"sub": user.username})
         print(f"Access token created for user: {user.username}")
         
         return {"access_token": access_token, "token_type": "bearer"}
@@ -128,7 +124,7 @@ async def register(user: UserRegister):
             detail=f"Registration failed: {str(e)}"
         )
 
-@app.post("/login", response_model=Token)
+@app.post("/login", response_model=Authentication)
 async def login(user: UserLogin):
     """Login user and return JWT token."""
     users_collection = get_user_collection()
@@ -142,14 +138,14 @@ async def login(user: UserLogin):
         )
     
     # Verify password
-    if not verify_password(user.password, user_doc["hashed_password"]):
+    if not Authentication.verify_password(user.password, user_doc["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password"
         )
     
     # Create access token
-    access_token = create_access_token(data={"sub": user.username})
+    access_token = Authentication.create_access_token(data={"sub": user.username})
     
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -159,7 +155,7 @@ async def logout():
     return {"message": "Successfully logged out"}
 
 @app.get("/me")
-async def get_me(current_user: str = Depends(get_current_user)):
+async def get_me(current_user: str = Depends(Authentication.get_current_user)):
     """Get current user information."""
     try:
         users_collection = get_user_collection()
@@ -193,27 +189,25 @@ def serialize_doc(doc: dict) -> dict:
     out.pop("_id", None)
     return out
 
-# Protected endpoints (require authentication)
+# Protected endpoints (require authenticator)
 @app.post("/analyze/")
-async def analyze_article(file: UploadFile = File(...), current_user: str = Depends(get_current_user)):
+async def analyze_article(file: UploadFile = File(...), current_user: str = Depends(Authentication.get_current_user)):
     """Analyze article (protected endpoint)."""
-    content = extract_text_from_pdf(file.file)
+    content = Article.extract_text_from_pdf(file.file)
     if not content:
         return {"error": "No text found in the PDF file."}
     articles_collection = get_article_collection()
-    category = classify_article(content)
+    category = Summarizer.classify_article(content)
     article_data = Article(
         filename=file.filename,
         content=content,
-        category=category,
-        summary = "",
         uploaded_at=datetime.now(timezone.utc)
     )
     result = articles_collection.insert_one(article_data.dict())
     return {"content": content, "article_id": str(result.inserted_id), "category": category}
 
 @app.get("/summarize/")
-async def summarize_article(article_id: Optional[str] = None, current_user: str = Depends(get_current_user)):
+async def summarize_article(article_id: Optional[str] = None, current_user: str = Depends(Authentication.get_current_user)):
     """Summarize article (protected endpoint)."""
     articles_collection = get_article_collection()
     if article_id:
@@ -223,20 +217,20 @@ async def summarize_article(article_id: Optional[str] = None, current_user: str 
     if not article:
         return {"error": "No article found."}
     content = article["content"]
-    summary = generate_summary(content, model, diversity_lambda=0.7)
+    summary = Summarizer.generate_summary(content, model, diversity_lambda=0.7)
     category = article.get("category")
     if not category:
-        category = classify_article(content)
+        category = Summarizer.classify_article(content)
         articles_collection.update_one({"_id": article["_id"]}, {"$set": {"category": category}})
     return {"summary": summary, "category": category}
 
 @app.post("/text-summarize")
-async def summarize_from_text(article_text: Annotated[str, Form()], current_user: str = Depends(get_current_user)):
+async def summarize_from_text(article_text: Annotated[str, Form()], current_user: str = Depends(Authentication.get_current_user)):
     """Summarize from text (protected endpoint)."""
     if not article_text:
         return {"error": "No article text provided."}
-    summary = generate_summary(article_text, model, diversity_lambda=0.7)
-    category = classify_article(article_text)
+    summary = Summarizer.generate_summary(article_text, model, diversity_lambda=0.7)
+    category = Summarizer.classify_article(article_text)
     return {"summary": summary, "category": category}
 
 class URLRequest(BaseModel):
@@ -246,13 +240,13 @@ class ArticleIDRequest(BaseModel):
     article_id: str
 
 @app.post("/extract-url-content")
-async def extract_url_content(payload: URLRequest, current_user: str = Depends(get_current_user)):
+async def extract_url_content(payload: URLRequest, current_user: str = Depends(Authentication.get_current_user)):
     """Extract content from URL (protected endpoint)."""
     url = payload.url
     if not url:
         return {"error": "No URL provided."}
     try:
-        content = extract_text_from_url(url)
+        content = Article.extract_text_from_url(url)
         if not content.strip():
             return {"error": "No content could be extracted from the URL."}
         articles_collection = get_article_collection()
@@ -278,7 +272,7 @@ async def extract_url_content(payload: URLRequest, current_user: str = Depends(g
         return {"error": f"Failed to extract content: {str(e)}"}
 
 @app.post("/summarize-url")
-async def summarize_url(payload: ArticleIDRequest, current_user: str = Depends(get_current_user)):
+async def summarize_url(payload: ArticleIDRequest, current_user: str = Depends(Authentication.get_current_user)):
     """Summarize URL content (protected endpoint)."""
     article_id = payload.article_id
     if not article_id:
@@ -289,8 +283,8 @@ async def summarize_url(payload: ArticleIDRequest, current_user: str = Depends(g
         if not article:
             return {"error": "No article found for the given article_id. Please extract content first."}
         content = article["content"]
-        summary = generate_summary(content, model, diversity_lambda=0.7)
-        category = classify_article(content)
+        summary = Summarizer.generate_summary(content, model, diversity_lambda=0.7)
+        category = Summarizer.classify_article(content)
         articles_collection.update_one({"_id": article["_id"]}, {"$set": {"summary": summary, "category": category}})
         return {"summary": summary, "category": category}
     except Exception as e:
