@@ -6,10 +6,8 @@ from nltk import pos_tag
 import numpy as np
 import re
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 from newspaper import Article as NewsArticle
-
 from pydantic import BaseModel
 
 # Download required NLTK data
@@ -18,10 +16,63 @@ nltk.download('stopwords')
 nltk.download('averaged_perceptron_tagger')
 
 
+# Load models
 model = joblib.load('model/calibrated_gb_model.joblib')
 clf = joblib.load('model/news_classifier.joblib')
 model_embed = SentenceTransformer('all-MiniLM-L6-v2')
 vectorizer = joblib.load('model/vectorizer.joblib')
+
+
+# ---------------- CUSTOM COSINE SIMILARITY ---------------- #
+
+def cosine_similarity_custom(vec1, vec2):
+    """
+    Compute cosine similarity between two vectors from scratch.
+    """
+    vec1 = np.array(vec1).flatten()
+    vec2 = np.array(vec2).flatten()
+
+    if vec1.shape != vec2.shape:
+        raise ValueError("Vectors must have the same dimensions")
+
+    dot_product = np.dot(vec1, vec2)
+    magnitude1 = np.linalg.norm(vec1)
+    magnitude2 = np.linalg.norm(vec2)
+
+    if magnitude1 == 0 or magnitude2 == 0:
+        return 0.0
+
+    cosine_sim = dot_product / (magnitude1 * magnitude2)
+    cosine_sim = np.clip(cosine_sim, -1.0, 1.0)
+    return cosine_sim
+
+
+def cosine_similarity_matrix(embeddings1, embeddings2=None):
+    """
+    Compute cosine similarity matrix between two sets of embeddings.
+    If embeddings2 is None, compute similarity within embeddings1.
+    """
+    if embeddings2 is None:
+        embeddings2 = embeddings1
+
+    embeddings1 = np.array(embeddings1)
+    embeddings2 = np.array(embeddings2)
+
+    norm1 = np.linalg.norm(embeddings1, axis=1, keepdims=True)
+    norm2 = np.linalg.norm(embeddings2, axis=1, keepdims=True)
+
+    norm1 = np.where(norm1 == 0, 1, norm1)
+    norm2 = np.where(norm2 == 0, 1, norm2)
+
+    embeddings1_norm = embeddings1 / norm1
+    embeddings2_norm = embeddings2 / norm2
+
+    similarity_matrix = np.dot(embeddings1_norm, embeddings2_norm.T)
+    similarity_matrix = np.clip(similarity_matrix, -1.0, 1.0)
+    return similarity_matrix
+
+
+# ---------------- SUMMARIZER CLASS ---------------- #
 
 class Summarizer(BaseModel):
 
@@ -63,39 +114,49 @@ class Summarizer(BaseModel):
 
     @staticmethod
     def generate_summary(article, model, diversity_lambda=0.7):
-        # sourcery skip: merge-list-append, move-assign-in-block
         sentences = sent_tokenize(article)
         if len(sentences) <= 3:
             return article
+
         top_n = max(3, int(len(sentences) * 0.3))
-        clean_sents =  Summarizer.preprocess(article)
+        clean_sents = Summarizer.preprocess(article)
         features = Summarizer.extract_advanced_features(clean_sents)
-        probas = model.predict_proba(features)[:, 1] # 1 is the probability of the positive class
-        sent_embeddings = model_embed.encode(clean_sents) # encode the sentences into embeddings
-        
-        doc_embedding = np.mean(sent_embeddings, axis=0, keepdims=True) # average the embeddings of the sentences
-        relevance_scores = cosine_similarity(sent_embeddings, doc_embedding).flatten() # calculate the relevance scores
-        probas_norm = (probas - probas.min()) / (probas.max() - probas.min() + 1e-8) # normalize the probabilities
-        relevance_scores = (relevance_scores - relevance_scores.min()) / (relevance_scores.max() - relevance_scores.min() + 1e-8) # normalize the relevance scores
-        relevance = 0.5 * probas_norm + 0.5 * relevance_scores # combine the probabilities and relevance scores
-        selected = [] # initialize the selected sentences
+        probas = model.predict_proba(features)[:, 1]
+
+        # Sentence embeddings
+        sent_embeddings = model_embed.encode(clean_sents)
+
+        # Use custom cosine similarity
+        doc_embedding = np.mean(sent_embeddings, axis=0, keepdims=True)
+        relevance_scores = cosine_similarity_matrix(sent_embeddings, doc_embedding).flatten()
+
+        # Normalize
+        probas_norm = (probas - probas.min()) / (probas.max() - probas.min() + 1e-8)
+        relevance_scores = (relevance_scores - relevance_scores.min()) / (relevance_scores.max() - relevance_scores.min() + 1e-8)
+        relevance = 0.5 * probas_norm + 0.5 * relevance_scores
+
+        selected = []
         remaining = list(range(len(sentences)))
-        first_idx = int(np.argmax(relevance)) # get the index of the most relevant sentence
+        first_idx = int(np.argmax(relevance))
         selected.append(first_idx)
         remaining.remove(first_idx)
+
         while len(selected) < top_n and remaining:
-            mmr_scores = [] # calculate the MMR scores
+            mmr_scores = []
             for idx in remaining:
-                rel = relevance[idx] # get the relevance score of the sentence
-                sim_to_selected = max(cosine_similarity([sent_embeddings[idx]], [sent_embeddings[j] for j in selected])[0]) # calculate the similarity between the sentence and the selected sentences
-                mmr = diversity_lambda * rel - (1 - diversity_lambda) * sim_to_selected # calculate the MMR score
+                rel = relevance[idx]
+                sims = [cosine_similarity_custom(sent_embeddings[idx], sent_embeddings[j]) for j in selected]
+                sim_to_selected = max(sims) if sims else 0.0
+                mmr = diversity_lambda * rel - (1 - diversity_lambda) * sim_to_selected
                 mmr_scores.append(mmr)
-            next_idx = int(remaining[np.argmax(mmr_scores)]) # get the index of the next sentence to add
+
+            next_idx = remaining[int(np.argmax(mmr_scores))]
             selected.append(next_idx)
             remaining.remove(next_idx)
-        selected.sort() # sort the selected sentences by their index
-        summary = ' '.join([sentences[i] for i in selected]) # join the selected sentences into a summary
-        summary = summary[0].upper() + summary[1:] # capitalize the first letter of the summary
+
+        selected.sort()
+        summary = ' '.join([sentences[i] for i in selected])
+        summary = summary[0].upper() + summary[1:]
         if not summary.endswith(('.', '!', '?')):
             summary += '.'
         return summary

@@ -82,7 +82,7 @@ async def register(user: UserRegister):
         print(f"Attempting to register user: {user.username}")
         
         # Check if user already exists
-        existing_user = users_collection.find_one({"$or": [{"email": user.email}, {"username": user.username}]})
+        existing_user = users_collection.find_one({"$or": [{"email": user.email},{"username": user.username}]})
         if existing_user:
             print(f"User already exists: {existing_user}")
             raise HTTPException(
@@ -250,12 +250,9 @@ async def extract_url_content(payload: URLRequest, current_user: str = Depends(A
         if not content.strip():
             return {"error": "No content could be extracted from the URL."}
         articles_collection = get_article_collection()
-        from db.schema import Article
         article_data = Article(
             filename=url,
             content=content,
-            category="",
-            summary="",
             uploaded_at=datetime.now(timezone.utc)
         )
         insert_result = articles_collection.insert_one(article_data.dict())
