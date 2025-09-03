@@ -49,6 +49,7 @@ def cosine_similarity_matrix(embeddings1, embeddings2=None):
     return np.clip(similarity_matrix, -1.0, 1.0)
 
 # ---------------- LOAD MODELS ---------------- #
+<<<<<<< Updated upstream
 # Resolve model paths relative to this file so app runs from any CWD
 _BASE_DIR = os.path.dirname(__file__)
 _CALIBRATED_GB_MODEL_PATH = os.path.join(_BASE_DIR, 'calibrated_gb_model.joblib')
@@ -58,6 +59,10 @@ _VECTORIZER_PATH = os.path.join(_BASE_DIR, 'vectorizer.joblib')
 model = joblib.load(_CALIBRATED_GB_MODEL_PATH)
 clf = joblib.load(_NEWS_CLASSIFIER_PATH)
 vectorizer_sklearn = joblib.load(_VECTORIZER_PATH)
+=======
+model = joblib.load('calibrated_gb_model.joblib')
+clf = joblib.load('news_classifier.joblib')
+>>>>>>> Stashed changes
 model_embed = SentenceTransformer('all-MiniLM-L6-v2')
 
 # ---------------- CUSTOM TF-IDF IMPLEMENTATION ---------------- #

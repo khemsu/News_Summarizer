@@ -38,7 +38,7 @@ const Login = () => {
     const result = await login(formData.username, formData.password);
     
     if (result.success) {
-      navigate("/"); // Redirect to home page
+      navigate("/login"); // Redirect to home page
     } else {
       setError(result.error);
     }
