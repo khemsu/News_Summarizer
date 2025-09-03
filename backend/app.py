@@ -217,12 +217,18 @@ async def summarize_article(article_id: Optional[str] = None, current_user: str 
     if not article:
         return {"error": "No article found."}
     content = article["content"]
-    summary = Summarizer.generate_summary(content, model, diversity_lambda=0.7)
+    result = Summarizer.generate_summary_with_counts(content, model, diversity_lambda=0.7)
+    summary = result["summary"]
     category = article.get("category")
     if not category:
         category = Summarizer.classify_article(content)
         articles_collection.update_one({"_id": article["_id"]}, {"$set": {"category": category}})
-    return {"summary": summary, "category": category}
+    return {
+        "summary": summary,
+        "category": category,
+        "original_word_count": result["original_word_count"],
+        "summary_word_count": result["summary_word_count"],
+    }
 
 @app.post("/text-summarize")
 async def summarize_from_text(article_text: Annotated[str, Form()], current_user: str = Depends(Authentication.get_current_user)):
