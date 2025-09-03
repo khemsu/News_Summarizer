@@ -197,18 +197,4 @@ class Summarizer:
         pred = clf.predict(X)
         return pred[0]
 
-    @staticmethod
-    def get_word_count(text):
-        words = [w for w in word_tokenizer(text) if w.isalnum()]
-        return len(words)
-
-    @staticmethod
-    def generate_summary_with_counts(article, model, diversity_lambda=0.7):
-        summary = Summarizer.generate_summary(article, model, diversity_lambda=diversity_lambda)
-        original_word_count = Summarizer.get_word_count(article)
-        summary_word_count = Summarizer.get_word_count(summary)
-        return {
-            "summary": summary,
-            "original_word_count": original_word_count,
-            "summary_word_count": summary_word_count,
-        }
+    
