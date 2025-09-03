@@ -187,6 +187,11 @@ class Summarizer:
 
     @staticmethod
     def classify_article(article_text):
+        #Updated - Validate article length - require at least 100 words for classification
+        word_count = len(article_text.split())
+        if word_count < 100:
+            return "insufficient_content"  # Return a default category for short articles
+            
         stopwords = {
             "the",
             "a",
@@ -212,5 +217,4 @@ class Summarizer:
         X = vectorizer_sklearn.transform([processed])
         pred = clf.predict(X)
         return pred[0]
-    
     
