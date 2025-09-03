@@ -93,3 +93,4 @@ The backend is a Flask application located in the `backend/` directory.
     ```
 
     The frontend will be running at `http://localhost:5173`.
+
