@@ -9,7 +9,6 @@ from newspaper import Article as NewsArticle
 from collections import Counter
 import math
 
-# ---------------- CUSTOM TOKENIZERS ---------------- #
 def sentence_tokenizer(text):
    
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
@@ -21,7 +20,6 @@ def word_tokenizer(sentence):
     words = sentence.split()
     return words
 
-# ---------------- CUSTOM COSINE SIMILARITY ---------------- #
 def cosine_similarity_custom(vec1, vec2):
     vec1 = np.array(vec1).flatten()
     vec2 = np.array(vec2).flatten()
@@ -49,7 +47,6 @@ def cosine_similarity_matrix(embeddings1, embeddings2=None):
     return np.clip(similarity_matrix, -1.0, 1.0)
 
 # ---------------- LOAD MODELS ---------------- #
-# Resolve model paths relative to this file so app runs from any CWD
 _BASE_DIR = os.path.dirname(__file__)
 _CALIBRATED_GB_MODEL_PATH = os.path.join(_BASE_DIR, 'calibrated_gb_model.joblib')
 _NEWS_CLASSIFIER_PATH = os.path.join(_BASE_DIR, 'news_classifier.joblib')
@@ -74,7 +71,10 @@ class TFIDFVectorizerCustom:
             for w in words:
                 df_counts[w] += 1
         self.vocab = {w: i for i, w in enumerate(df_counts.keys())}
-        self.idf = {w: math.log((total_docs + 1) / (df_counts[w] + 1)) + 1 for w in df_counts.keys()}
+        self.idf = {
+            w: math.log((total_docs + 1) / (df_counts[w] + 1)) + 1
+            for w in df_counts
+        }
 
     def transform(self, corpus):
         X = np.zeros((len(corpus), len(self.vocab)))
@@ -143,13 +143,13 @@ class Summarizer:
         top_n = max(3, int(len(sentences) * 0.3))
         clean_sents = Summarizer.preprocess(article)
         features = Summarizer.extract_advanced_features(clean_sents)
-        probas = model.predict_proba(features)[:, 1]
+        probas = model.predict_proba(features)[:, 1] #probs is for sentence relevance
         sent_embeddings = model_embed.encode(clean_sents)
         doc_embedding = np.mean(sent_embeddings, axis=0, keepdims=True)
         relevance_scores = cosine_similarity_matrix(sent_embeddings, doc_embedding).flatten()
         probas_norm = (probas - probas.min()) / (probas.max() - probas.min() + 1e-8)
         relevance_scores = (relevance_scores - relevance_scores.min()) / (relevance_scores.max() - relevance_scores.min() + 1e-8)
-        relevance = 0.5 * probas_norm + 0.5 * relevance_scores
+        relevance = 0.5 * probas_norm + 0.5 * relevance_scores #MMR
         selected, remaining = [int(np.argmax(relevance))], list(range(len(sentences)))
         remaining.remove(selected[0])
         while len(selected) < top_n and remaining:
@@ -157,7 +157,7 @@ class Summarizer:
             for idx in remaining:
                 rel = relevance[idx]
                 sims = [cosine_similarity_custom(sent_embeddings[idx], sent_embeddings[j]) for j in selected]
-                sim_to_selected = max(sims) if sims else 0.0
+                sim_to_selected = max(sims, default=0.0)
                 mmr_scores.append(diversity_lambda * rel - (1 - diversity_lambda) * sim_to_selected)
             next_idx = remaining[int(np.argmax(mmr_scores))]
             selected.append(next_idx)
@@ -187,14 +187,30 @@ class Summarizer:
 
     @staticmethod
     def classify_article(article_text):
-        stopwords = set([
-            "the", "a", "an", "in", "on", "at", "for", "with", "to", "from",
-            "by", "and", "or", "but", "if", "of", "is", "are"
-        ])
+        stopwords = {
+            "the",
+            "a",
+            "an",
+            "in",
+            "on",
+            "at",
+            "for",
+            "with",
+            "to",
+            "from",
+            "by",
+            "and",
+            "or",
+            "but",
+            "if",
+            "of",
+            "is",
+            "are",
+        }
         processed = ' '.join([w.lower() for w in word_tokenizer(article_text) if w.isalnum() and w.lower() not in stopwords])
         # Use the pre-trained vectorizer to ensure feature dimensions match the classifier
         X = vectorizer_sklearn.transform([processed])
         pred = clf.predict(X)
         return pred[0]
-
+    
     
