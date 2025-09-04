@@ -197,6 +197,8 @@ async def analyze_article(file: UploadFile = File(...), current_user: str = Depe
         return {"error": "No text found in the PDF file."}
     articles_collection = get_article_collection()
     category = Summarizer.classify_article(content)
+    # Convert numpy types to Python native types
+    category = str(category) if category is not None else None
     article_data = Article(
         filename=file.filename,
         content=content,
@@ -225,12 +227,14 @@ async def summarize_article(article_id: Optional[str] = None, current_user: str 
     category = article.get("category")
     if not category:
         category = Summarizer.classify_article(content)
+        # Convert numpy types to Python native types
+        category = str(category) if category is not None else None
         articles_collection.update_one({"_id": article["_id"]}, {"$set": {"category": category}})
     return {
         "summary": summary,
-        "category": category,
-        "original_word_count": result["original_word_count"],
-        "summary_word_count": result["summary_word_count"],
+        "category": str(category) if category is not None else None,
+        "original_word_count": int(result["original_word_count"]) if hasattr(result["original_word_count"], 'item') else result["original_word_count"],
+        "summary_word_count": int(result["summary_word_count"]) if hasattr(result["summary_word_count"], 'item') else result["summary_word_count"],
     }
 
 @app.post("/text-summarize")
@@ -243,17 +247,41 @@ async def summarize_from_text(article_text: Annotated[str, Form()], current_user
     original_word_count = result["original_word_count"]
     summary_word_count = result["summary_word_count"]
     category = Summarizer.classify_article(article_text)
-    article_data = Article(
-        filename="text_input",
-        uploaded_by=current_user,
-        content=article_text,
-        summary=summary,
-        category=category,
-        uploaded_at=datetime.now()
-    )
-    article_collection.insert_one(article_data.model_dump())
 
-    return {"summary": summary, "category": category, "original_word_count": original_word_count, "summary_word_count": summary_word_count}
+    # Ensure category is native type
+    category_str = str(category) if category is not None else None
+
+    # Insert article record (keep behavior from updated upstream)
+    try:
+        article_data = Article(
+            filename="text_input",
+            uploaded_by=current_user,
+            content=article_text,
+            summary=summary,
+            category=category_str,
+            uploaded_at=datetime.now()
+        )
+        # prefer article_collection if available, else use get_article_collection()
+        try:
+            article_collection.insert_one(article_data.model_dump())
+        except NameError:
+            get_article_collection().insert_one(article_data.model_dump())
+    except Exception:
+        # if insertion fails, continue to return summary
+        pass
+
+    # Fallback: compute word counts if not present
+    if original_word_count is None:
+        original_word_count = len(article_text.split())
+    if summary_word_count is None:
+        summary_word_count = len(str(summary).split())
+
+    return {
+        "summary": str(summary),
+        "category": category_str,
+        "original_word_count": int(original_word_count) if hasattr(original_word_count, 'item') else original_word_count,
+        "summary_word_count": int(summary_word_count) if hasattr(summary_word_count, 'item') else summary_word_count,
+    }
 
 class URLRequest(BaseModel):
     url: str
@@ -305,22 +333,23 @@ async def summarize_url_content(payload: URLRequest, current_user: str = Depends
 async def get_articles_by_category(category: str, current_user: str = Depends(Authentication.get_current_user)):
     """Get articles by category (protected endpoint)."""
     try:
-        # articles_collection = get_article_collection()
-        
+        # Use article_collection if available, else fall back to get_article_collection()
+        try:
+            coll = article_collection
+        except NameError:
+            coll = get_article_collection()
+
         # Find articles by category, sorted by upload date (newest first)
-        articles = list(article_collection.find(
-            {"category": category, "uploaded_by": current_user}, {"_id":0}
-        ).sort("uploaded_at", -1))
-        
+        articles = list(coll.find({"category": category, "uploaded_by": current_user}, {"_id": 0}).sort("uploaded_at", -1))
+
         if not articles:
             return {"articles": [], "message": f"No articles found in category: {category}"}
-        
+
         return {
             "uploaded_by": current_user,
             "articles": articles,
             "category": category,
         }
-        
     except Exception as e:
         print(f"Error fetching articles by category: {str(e)}")
         raise HTTPException(
