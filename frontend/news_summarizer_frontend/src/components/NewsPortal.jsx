@@ -12,7 +12,7 @@ const NewsPortal = () => {
   const categories = [
     { name: 'politics', label: 'Politics', icon: '🏛️' },
     { name: 'sport', label: 'Sports', icon: '⚽' },
-    { name: 'finance', label: 'Finance', icon: '💰' },
+    { name: 'tech', label: 'Technology', icon: '💻' },
     { name: 'business', label: 'Business', icon: '🏢' },
     { name: 'entertainment', label: 'Entertainment', icon: '🎬' }
   ];
