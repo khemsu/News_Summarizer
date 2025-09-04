@@ -21,8 +21,10 @@ def word_tokenizer(sentence):
 def cosine_similarity_custom(vec1, vec2):
     vec1 = np.array(vec1).flatten()
     vec2 = np.array(vec2).flatten()
+
     if vec1.shape != vec2.shape:
         raise ValueError("Vectors must have the same dimensions")
+    
     dot_product = np.dot(vec1, vec2)
     magnitude1 = np.linalg.norm(vec1)
     magnitude2 = np.linalg.norm(vec2)
@@ -33,12 +35,16 @@ def cosine_similarity_custom(vec1, vec2):
 def cosine_similarity_matrix(embeddings1, embeddings2=None):
     if embeddings2 is None:
         embeddings2 = embeddings1
+
     embeddings1 = np.array(embeddings1)
     embeddings2 = np.array(embeddings2)
+
     norm1 = np.linalg.norm(embeddings1, axis=1, keepdims=True)
     norm2 = np.linalg.norm(embeddings2, axis=1, keepdims=True)
+
     norm1 = np.where(norm1 == 0, 1, norm1)
     norm2 = np.where(norm2 == 0, 1, norm2)
+
     embeddings1_norm = embeddings1 / norm1
     embeddings2_norm = embeddings2 / norm2
     similarity_matrix = np.dot(embeddings1_norm, embeddings2_norm.T)
@@ -51,7 +57,7 @@ def cosine_similarity_matrix(embeddings1, embeddings2=None):
 # _NEWS_CLASSIFIER_PATH = os.path.join(_BASE_DIR, 'news_classifier.joblib')
 # _VECTORIZER_PATH = os.path.join(_BASE_DIR, 'vectorizer.joblib')
 
-model = joblib.load('model/calibrated_gb_model.joblib')
+model = joblib.load('model/improved_gb_summarizer_20250905_003855.joblib')
 clf = joblib.load('model/news_classifier.joblib')
 vectorizer_sklearn = joblib.load('model/vectorizer.joblib')
 model_embed = SentenceTransformer('all-MiniLM-L6-v2')
