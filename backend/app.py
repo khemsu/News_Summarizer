@@ -12,7 +12,6 @@ from pydantic import BaseModel
 # from auth import get_password_hash, verify_password, create_access_token, get_current_user
 import os
 from dotenv import load_dotenv
-from datetime import datetime
 from bson import ObjectId
 from auth import Authentication
 
@@ -204,7 +203,7 @@ async def analyze_article(file: UploadFile = File(...), current_user: str = Depe
         uploaded_by=current_user,  
         summary="",  # Add default empty summary
         classification=category,
-        uploaded_at=datetime.now(timezone.utc)
+        uploaded_at=datetime.now()
     )
     result = articles_collection.insert_one(article_data.model_dump())
     return {"content": content, "article_id": str(result.inserted_id), "classification": category}
@@ -222,6 +221,7 @@ async def summarize_article(article_id: Optional[str] = None, current_user: str 
     content = article["content"]
     result = Summarizer.generate_summary_with_counts(content, model, diversity_lambda=0.7)
     summary = result["summary"]
+    articles_collection.update_one({"_id": article["_id"]}, {"$set": {"summary": summary}})
     category = article.get("category")
     if not category:
         category = Summarizer.classify_article(content)
@@ -243,6 +243,16 @@ async def summarize_from_text(article_text: Annotated[str, Form()], current_user
     original_word_count = result["original_word_count"]
     summary_word_count = result["summary_word_count"]
     category = Summarizer.classify_article(article_text)
+    article_data = Article(
+        filename="text_input",
+        uploaded_by=current_user,
+        content=article_text,
+        summary=summary,
+        category=category,
+        uploaded_at=datetime.now()
+    )
+    article_collection.insert_one(article_data.model_dump())
+
     return {"summary": summary, "category": category, "original_word_count": original_word_count, "summary_word_count": summary_word_count}
 
 class URLRequest(BaseModel):
@@ -273,7 +283,7 @@ async def summarize_url_content(payload: URLRequest, current_user: str = Depends
             summary=summary,
             category=category,
             content=content,
-            uploaded_at=datetime.now(timezone.utc)
+            uploaded_at=datetime.now()
         )
         insert_result = articles_collection.insert_one(article_data.model_dump())
         
