@@ -113,7 +113,7 @@ const Summarize = () => {
                         </div>
                         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                             <h4 className="text-lg font-semibold text-black mb-2">Classification</h4>
-                            <p className="text-black leading-relaxed text-lg">{classification}</p>
+                            <p className="text-black leading-relaxed text-lg text-justify">{classification}</p>
                         </div>
                     </div>
                 )}

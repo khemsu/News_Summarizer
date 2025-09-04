@@ -126,7 +126,7 @@ const TextSummarize = () => {
                                         <span className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center mr-2 text-xs">📄</span>
                                         Summary
                                     </h4>
-                                    <p className="text-black leading-relaxed text-lg">{summary}</p>
+                                    <p className="text-black leading-relaxed text-lg text-summarize">{summary}</p>
                                 </div>
                             </div>
                         )}

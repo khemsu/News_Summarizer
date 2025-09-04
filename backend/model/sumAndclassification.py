@@ -1,22 +1,20 @@
 import joblib
-import os
 import numpy as np
 import re
+import os
 import nltk
 from nltk.corpus import stopwords as nltk_stopwords
 from sentence_transformers import SentenceTransformer
-from newspaper import Article as NewsArticle
+from pydantic import BaseModel
 from collections import Counter
 import math
 
 # ---------------- CUSTOM TOKENIZERS ---------------- #
 def sentence_tokenizer(text):
-   
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
     return [s for s in sentences if s]
 
 def word_tokenizer(sentence):
-
     sentence = re.sub(r'[^\w\s]', '', sentence)  # remove punctuation
     words = sentence.split()
     return words
@@ -49,24 +47,19 @@ def cosine_similarity_matrix(embeddings1, embeddings2=None):
     return np.clip(similarity_matrix, -1.0, 1.0)
 
 # ---------------- LOAD MODELS ---------------- #
-<<<<<<< Updated upstream
 # Resolve model paths relative to this file so app runs from any CWD
-_BASE_DIR = os.path.dirname(__file__)
-_CALIBRATED_GB_MODEL_PATH = os.path.join(_BASE_DIR, 'calibrated_gb_model.joblib')
-_NEWS_CLASSIFIER_PATH = os.path.join(_BASE_DIR, 'news_classifier.joblib')
-_VECTORIZER_PATH = os.path.join(_BASE_DIR, 'vectorizer.joblib')
+# _BASE_DIR = os.path.dirname(__file__)
+# _CALIBRATED_GB_MODEL_PATH = os.path.join(_BASE_DIR, 'calibrated_gb_model.joblib')
+# _NEWS_CLASSIFIER_PATH = os.path.join(_BASE_DIR, 'news_classifier.joblib')
+# _VECTORIZER_PATH = os.path.join(_BASE_DIR, 'vectorizer.joblib')
 
-model = joblib.load(_CALIBRATED_GB_MODEL_PATH)
-clf = joblib.load(_NEWS_CLASSIFIER_PATH)
-vectorizer_sklearn = joblib.load(_VECTORIZER_PATH)
-=======
-model = joblib.load('calibrated_gb_model.joblib')
-clf = joblib.load('news_classifier.joblib')
->>>>>>> Stashed changes
+model = joblib.load('model/calibrated_gb_model.joblib')
+clf = joblib.load('model/news_classifier.joblib')
+vectorizer_sklearn = joblib.load('model/vectorizer.joblib')
 model_embed = SentenceTransformer('all-MiniLM-L6-v2')
 
 # ---------------- CUSTOM TF-IDF IMPLEMENTATION ---------------- #
-class TFIDFVectorizerCustom:
+class TFIDFVectorizerCustom(BaseModel):
     def __init__(self):
         self.vocab = {}
         self.idf = {}
