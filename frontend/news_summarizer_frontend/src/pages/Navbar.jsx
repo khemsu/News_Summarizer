@@ -43,6 +43,9 @@ const Navbar = () => {
 
             {/* Navigation Links */}
             <div className="hidden md:flex items-center space-x-6">
+              <Link to="/news-portal" className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-md font-medium transition-colors duration-200">
+                News Portal
+              </Link>
               <Link to="/summarize" className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-md font-medium transition-colors duration-200">
                 Upload
               </Link>
@@ -52,6 +55,7 @@ const Navbar = () => {
               <Link to="/url-summarizer" className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-md font-medium transition-colors duration-200">
                 URL Summarize
               </Link>
+
             </div>
           </div>
 
@@ -118,6 +122,13 @@ const Navbar = () => {
                 onClick={() => setIsMobileOpen(false)}
               >
                 Home
+              </Link>
+              <Link 
+                to="/news-portal" 
+                className="block px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-white rounded-md font-medium transition-colors duration-200" 
+                onClick={() => setIsMobileOpen(false)}
+              >
+                News Portal
               </Link>
               <Link 
                 to="/summarize" 

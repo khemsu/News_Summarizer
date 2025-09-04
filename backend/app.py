@@ -6,7 +6,7 @@ from bson.objectid import ObjectId
 from typing import Optional, Annotated  
 from datetime import datetime, timezone
 from db.schema import Article, User
-from db.mongo_config import get_user_collection, get_article_collection
+from db.mongo_config import get_user_collection, get_article_collection, article_collection
 from model.sumAndclassification import model, Summarizer
 from pydantic import BaseModel
 # from auth import get_password_hash, verify_password, create_access_token, get_current_user
@@ -201,10 +201,13 @@ async def analyze_article(file: UploadFile = File(...), current_user: str = Depe
     article_data = Article(
         filename=file.filename,
         content=content,
+        uploaded_by=current_user,  
+        summary="",  # Add default empty summary
+        classification=category,
         uploaded_at=datetime.now(timezone.utc)
     )
-    result = articles_collection.insert_one(article_data.dict())
-    return {"content": content, "article_id": str(result.inserted_id), "category": category}
+    result = articles_collection.insert_one(article_data.model_dump())
+    return {"content": content, "article_id": str(result.inserted_id), "classification": category}
 
 @app.get("/summarize/")
 async def summarize_article(article_id: Optional[str] = None, current_user: str = Depends(Authentication.get_current_user)):
@@ -235,9 +238,12 @@ async def summarize_from_text(article_text: Annotated[str, Form()], current_user
     """Summarize from text (protected endpoint)."""
     if not article_text:
         return {"error": "No article text provided."}
-    summary = Summarizer.generate_summary(article_text, model, diversity_lambda=0.7)
+    result = Summarizer.generate_summary_with_counts(article_text, model, diversity_lambda=0.7)
+    summary = result["summary"]
+    original_word_count = result["original_word_count"]
+    summary_word_count = result["summary_word_count"]
     category = Summarizer.classify_article(article_text)
-    return {"summary": summary, "category": category}
+    return {"summary": summary, "category": category, "original_word_count": original_word_count, "summary_word_count": summary_word_count}
 
 class URLRequest(BaseModel):
     url: str
@@ -245,8 +251,8 @@ class URLRequest(BaseModel):
 class ArticleIDRequest(BaseModel):
     article_id: str
 
-@app.post("/extract-url-content")
-async def extract_url_content(payload: URLRequest, current_user: str = Depends(Authentication.get_current_user)):
+@app.post("/summarize-url-content")
+async def summarize_url_content(payload: URLRequest, current_user: str = Depends(Authentication.get_current_user)):
     """Extract content from URL (protected endpoint)."""
     url = payload.url
     if not url:
@@ -256,43 +262,81 @@ async def extract_url_content(payload: URLRequest, current_user: str = Depends(A
         if not content.strip():
             return {"error": "No content could be extracted from the URL."}
         articles_collection = get_article_collection()
+        result = Summarizer.generate_summary_with_counts(content, model, diversity_lambda=0.7)
+        summary = result["summary"]
+        category = Summarizer.classify_article(content)
+        
+        # Create article with all required fields including uploaded_by
         article_data = Article(
             filename=url,
+            uploaded_by=current_user,  
+            summary=summary,
+            category=category,
             content=content,
             uploaded_at=datetime.now(timezone.utc)
         )
-        insert_result = articles_collection.insert_one(article_data.dict())
+        insert_result = articles_collection.insert_one(article_data.model_dump())
         
         # Return plain text if Accept header requests it
         # Otherwise return JSON
         return {
             "article_id": str(insert_result.inserted_id),
             "filename": url,
+            "uploaded_by": current_user,  
+            "summary": summary,
             "content": content,
+            "category": category,
             "uploaded_at": article_data.uploaded_at.isoformat()
         }
     except Exception as e:
         return {"error": f"Failed to extract content: {str(e)}"}
 
-@app.post("/summarize-url")
-async def summarize_url(payload: ArticleIDRequest, current_user: str = Depends(Authentication.get_current_user)):
-    """Summarize URL content (protected endpoint)."""
-    article_id = payload.article_id
-    if not article_id:
-        return {"error": "No article_id provided."}
+@app.get("/articles/{category}")
+async def get_articles_by_category(category: str, current_user: str = Depends(Authentication.get_current_user)):
+    """Get articles by category (protected endpoint)."""
     try:
-        articles_collection = get_article_collection()
-        article = articles_collection.find_one({"_id": ObjectId(article_id)})
-        if not article:
-            return {"error": "No article found for the given article_id. Please extract content first."}
-        content = article["content"]
-        summary = Summarizer.generate_summary(content, model, diversity_lambda=0.7)
-        category = Summarizer.classify_article(content)
-        articles_collection.update_one({"_id": article["_id"]}, {"$set": {"summary": summary, "category": category}})
-        return {"summary": summary, "category": category}
+        # articles_collection = get_article_collection()
+        
+        # Find articles by category, sorted by upload date (newest first)
+        articles = list(article_collection.find(
+            {"category": category, "uploaded_by": current_user}, {"_id":0}
+        ).sort("uploaded_at", -1))
+        
+        if not articles:
+            return {"articles": [], "message": f"No articles found in category: {category}"}
+        
+        return {
+            "uploaded_by": current_user,
+            "articles": articles,
+            "category": category,
+        }
+        
     except Exception as e:
-        return {"error": f"Failed to summarize and classify: {str(e)}"}
+        print(f"Error fetching articles by category: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch articles: {str(e)}"
+        )
 
+@app.get("/articles")
+async def get_all_articles(current_user: str = Depends(Authentication.get_current_user)):
+    """Get all articles (protected endpoint)."""
+    try:
+        
+        # Find all articles, sorted by upload date (newest first)
+        articles = list(article_collection.find({"uploaded_by": current_user}, {"_id": 0}).sort("uploaded_at", -1))
 
+        # Serialize the articles
+        return {
+            "articles": articles,
+            "count": len(articles)
+        }
+        
+    except Exception as e:
+        print(f"Error fetching all articles: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch articles: {str(e)}"
+        )
 
 

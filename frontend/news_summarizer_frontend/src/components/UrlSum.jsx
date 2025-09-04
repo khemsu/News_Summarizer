@@ -45,7 +45,7 @@ const UrlSum = () => {
       
       // Step 1: Extract content
       console.log("Starting extraction for URL:", url);
-      const extractResponse = await axios.post('http://localhost:8000/extract-url-content', 
+      const extractResponse = await axios.post('http://localhost:8000/summarize-url-content', 
         { url },
         {
           headers: {
@@ -61,35 +61,14 @@ const UrlSum = () => {
         alert(`Extraction failed: ${extractResponse.data.error}`);
         return;
       }
-      
-      setContent(extractResponse.data.content);
-      setArticleId(extractResponse.data.article_id);
-      
-      // Step 2: Summarize immediately
       setSummarizing(true);
       setLoading(false);
       
-      console.log("Starting summarization for article ID:", extractResponse.data.article_id);
-      const summarizeResponse = await axios.post('http://localhost:8000/summarize-url', 
-        { article_id: extractResponse.data.article_id },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      console.log("Summarize response:", summarizeResponse.data);
-      
-      // Check for error in summarization response
-      if (summarizeResponse.data.error) {
-        alert(`Summarization failed: ${summarizeResponse.data.error}`);
-        return;
-      }
-      
-      setSummary(summarizeResponse.data.summary);
-      setClassification(summarizeResponse.data.category); // Backend returns 'category', not 'classification'
-      
+      setContent(extractResponse.data.content);
+      setArticleId(extractResponse.data.article_id);
+      setSummary(extractResponse.data.summary);
+      setClassification(extractResponse.data.category); // Backend returns 'category', not 'classification'
+
     } catch (error) {
       console.error("Error in extract and summarize:", error);
       
@@ -198,7 +177,7 @@ const UrlSum = () => {
                     )}
                   </h4>
                   <div className="max-h-96 overflow-y-auto">
-                    <p className="text-black leading-relaxed text-lg whitespace-pre-wrap">{content}</p>
+                    <p className="text-black leading-relaxed text-lg whitespace-pre-wrap text-justify">{content}</p>
                   </div>
                 </div>
               </div>
@@ -212,7 +191,7 @@ const UrlSum = () => {
                     <span className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center mr-2 text-xs">📄</span>
                     Summary
                   </h4>
-                  <p className="text-black leading-relaxed text-lg whitespace-pre-wrap">{summary}</p>
+                  <p className="text-black leading-relaxed text-lg whitespace-pre-wrap text-justify">{summary}</p>
                 </div>
               </div>
             )}

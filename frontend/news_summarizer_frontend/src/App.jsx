@@ -10,6 +10,7 @@ import UrlSum from './components/UrlSum';
 import Summarize from './components/Summarize';
 import TextSummarize from './components/TextSummarize';
 import FileUpload from './components/FileUpload';
+import NewsPortal from './components/NewsPortal';
 
 function App() {
   return (
@@ -50,7 +51,14 @@ function App() {
                 <TextSummarize />
               </ProtectedRoute>
             } />
-            
+
+            <Route path="/news-portal" element={
+              <ProtectedRoute>
+                <Navbar />
+                <NewsPortal />
+              </ProtectedRoute>
+            } />
+
             {/* Redirect any unknown routes to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

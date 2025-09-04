@@ -7,6 +7,9 @@ import re
 
 class Article(BaseModel):
     filename: str
+    uploaded_by: str
+    summary: str
+    category: str
     content: str
     uploaded_at: datetime.datetime
 
